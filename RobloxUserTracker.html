@@ -1,0 +1,81 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Roblox User Game Tracker</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #f5f5f5;
+      padding: 40px;
+      text-align: center;
+    }
+    input, button {
+      padding: 10px;
+      margin: 10px;
+      font-size: 16px;
+    }
+    #result {
+      margin-top: 20px;
+      padding: 10px;
+      background: #fff;
+      border-radius: 8px;
+      display: inline-block;
+    }
+  </style>
+</head>
+<body>
+  <h1>🔍 Roblox User Game Tracker</h1>
+  <input type="text" id="username" placeholder="Enter Roblox username">
+  <button onclick="trackUser()">Track</button>
+
+  <div id="result"></div>
+
+  <script>
+    async function trackUser() {
+      const username = document.getElementById("username").value.trim();
+      const resultDiv = document.getElementById("result");
+      resultDiv.innerHTML = "Loading...";
+
+      try {
+        // Step 1: Get User ID
+        const userRes = await fetch(`https://api.roblox.com/users/get-by-username?username=${username}`);
+        const userData = await userRes.json();
+
+        if (!userData.Id) {
+          resultDiv.innerHTML = "❌ User not found.";
+          return;
+        }
+
+        const userId = userData.Id;
+
+        // Step 2: Get Presence
+        const presenceRes = await fetch("https://presence.roblox.com/v1/presence/users", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ userIds: [userId] })
+        });
+        const presenceData = await presenceRes.json();
+        const presence = presenceData.userPresences[0];
+
+        if (presence.userPresenceType !== 2) {
+          resultDiv.innerHTML = `🟡 ${username} is not in a game right now.`;
+          return;
+        }
+
+        const placeId = presence.placeId;
+        const location = presence.lastLocation;
+        const gameUrl = `https://www.roblox.com/games/${placeId}`;
+
+        resultDiv.innerHTML = `✅ <strong>${username}</strong> is in a game: <br><br>
+          <strong>${location}</strong><br>
+          <a href="${gameUrl}" target="_blank">🔗 Click here to open the game</a>`;
+      } catch (err) {
+        console.error(err);
+        resultDiv.innerHTML = "❌ Error fetching data. Please try again later.";
+      }
+    }
+  </script>
+</body>
+</html>
